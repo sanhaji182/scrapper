@@ -22,6 +22,7 @@ type Run struct {
 	InputJSON      json.RawMessage `json:"input" db:"input_json"`
 	ResultJSON     json.RawMessage `json:"result,omitempty" db:"result_json"`
 	NormalizedJSON json.RawMessage `json:"normalized,omitempty" db:"normalized_json"`
+	AISummaryJSON  json.RawMessage `json:"ai_summary,omitempty" db:"ai_summary_json"`
 	ErrorMessage   string          `json:"error_message,omitempty" db:"error_message"`
 	ItemCount      int             `json:"item_count" db:"item_count"`
 	CreatedAt      time.Time       `json:"created_at" db:"created_at"`

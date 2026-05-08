@@ -43,6 +43,17 @@ type ProductGroup struct {
 	BestPriceID    string        `json:"best_price_id"`
 }
 
+type AISummaryResult struct {
+	SummaryText      string            `json:"summary_text"`
+	RecommendedItems []RecommendedItem `json:"recommended_items"`
+}
+
+type RecommendedItem struct {
+	GroupID   string `json:"group_id"`
+	ProductID string `json:"product_id"`
+	Reason    string `json:"reason"`
+}
+
 func FromProduct(p scraper.Product) GroupedItem {
 	return GroupedItem{
 		ProductID:       p.ID,

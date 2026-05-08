@@ -17,6 +17,10 @@ type QueueClient interface {
 	EnqueueScrapeJob(ctx context.Context, runID string, opts scraper.SearchOptions) error
 }
 
+type aiSummaryRequest struct {
+	Prompt string `json:"prompt"`
+}
+
 type Handler struct {
 	repo   Repository
 	queue  QueueClient
@@ -35,6 +39,8 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	v1.DELETE("/runs/:id", h.DeleteRun)
 	v1.POST("/runs/:id/normalize", h.NormalizeRun)
 	v1.GET("/runs/:id/normalized", h.GetNormalizedRun)
+	v1.POST("/runs/:id/ai-summary", h.GenerateAISummary)
+	v1.GET("/runs/:id/ai-summary", h.GetAISummary)
 }
 
 func (h *Handler) SubmitTokopediaSearch(c echo.Context) error {
@@ -151,4 +157,48 @@ func (h *Handler) GetNormalizedRun(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, groups)
+}
+
+func (h *Handler) GenerateAISummary(c echo.Context) error {
+	id := c.Param("id")
+	ctx := c.Request().Context()
+
+	var req aiSummaryRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	r, err := h.repo.GetByID(ctx, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "run not found")
+	}
+
+	llmClient := ai.NewDummyClient()
+	res, err := ai.SummarizeRun(ctx, id, r.NormalizedJSON, llmClient, req.Prompt, h.repo.SaveAISummary)
+	if err != nil {
+		h.logger.Error("ai summary failed", zap.String("run_id", id), zap.Error(err))
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
+func (h *Handler) GetAISummary(c echo.Context) error {
+	id := c.Param("id")
+	ctx := c.Request().Context()
+
+	r, err := h.repo.GetByID(ctx, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "run not found")
+	}
+	if len(r.AISummaryJSON) == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "ai summary not found for this run")
+	}
+
+	var summary ai.AISummaryResult
+	if err := json.Unmarshal(r.AISummaryJSON, &summary); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to decode ai summary")
+	}
+
+	return c.JSON(http.StatusOK, summary)
 }

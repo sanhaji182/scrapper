@@ -63,3 +63,25 @@ tokopedia-scraper/
 - [x] Phase 8 — Entry Points
 - [x] Phase 9 — Docker & Tooling
 - [x] Phase 10 — AI Normalizer
+- [x] Phase 11 — AI Summary
+
+## Updated Folder Structure (Phase 10–12)
+
+internal/ai/
+  client.go        // LLMClient interface + OpenAI impl
+  normalizer.go    // NormalizeRun, GroupNormalizedProducts
+  summary.go       // SummarizeRun, AISummaryResult
+  types.go         // NormalizedProduct, ProductGroup, GroupedItem
+
+apps/dashboard/    // Repo frontend terpisah (Next.js 14)
+
+## New Endpoints (Phase 10–11)
+POST /v1/runs/:id/normalize
+GET  /v1/runs/:id/normalized
+POST /v1/runs/:id/ai-summary
+GET  /v1/runs/:id/ai-summary
+
+## Global Rules Tambahan
+- Semua call ke LLM wajib lewat LLMClient interface, tidak boleh direct HTTP call
+- Output LLM selalu di-parse dan divalidasi sebelum disimpan ke DB
+- Prompt template disimpan sebagai const string di file masing-masing (normalizer.go/summary.go)

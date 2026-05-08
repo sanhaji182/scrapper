@@ -18,6 +18,7 @@ type Repository interface {
 	UpdateStatus(ctx context.Context, id string, status Status, errMsg string) error
 	SaveResult(ctx context.Context, id string, products []scraper.Product) error
 	SaveNormalized(ctx context.Context, id string, normalizedJSON []byte) error
+	SaveAISummary(ctx context.Context, id string, summaryJSON []byte) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -53,11 +54,11 @@ func (r *postgresRepository) Create(ctx context.Context, marketplace string, inp
 func (r *postgresRepository) GetByID(ctx context.Context, id string) (*Run, error) {
 	run := &Run{}
 	err := r.pool.QueryRow(ctx, `
-        SELECT id, status, marketplace, input_json, result_json, normalized_json,
+        SELECT id, status, marketplace, input_json, result_json, normalized_json, ai_summary_json,
                error_message, item_count, created_at, started_at, finished_at
         FROM runs WHERE id = $1
     `, id).Scan(
-		&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.ResultJSON, &run.NormalizedJSON,
+		&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.ResultJSON, &run.NormalizedJSON, &run.AISummaryJSON,
 		&run.ErrorMessage, &run.ItemCount, &run.CreatedAt, &run.StartedAt, &run.FinishedAt,
 	)
 	if err != nil {
@@ -77,7 +78,7 @@ func (r *postgresRepository) List(ctx context.Context, limit, offset int) ([]Run
 	}
 
 	rows, err := r.pool.Query(ctx, `
-        SELECT id, status, marketplace, input_json, normalized_json, error_message,
+        SELECT id, status, marketplace, input_json, normalized_json, ai_summary_json, error_message,
                item_count, created_at, started_at, finished_at
         FROM runs ORDER BY created_at DESC LIMIT $1 OFFSET $2
     `, limit, offset)
@@ -90,7 +91,7 @@ func (r *postgresRepository) List(ctx context.Context, limit, offset int) ([]Run
 	for rows.Next() {
 		var run Run
 		if err := rows.Scan(
-			&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.NormalizedJSON,
+			&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.NormalizedJSON, &run.AISummaryJSON,
 			&run.ErrorMessage, &run.ItemCount, &run.CreatedAt, &run.StartedAt, &run.FinishedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("repository.List scan: %w", err)
@@ -141,6 +142,18 @@ func (r *postgresRepository) SaveNormalized(ctx context.Context, id string, norm
     `, normalizedJSON, id)
 	if err != nil {
 		return fmt.Errorf("repository.SaveNormalized: %w", err)
+	}
+	return nil
+}
+
+func (r *postgresRepository) SaveAISummary(ctx context.Context, id string, summaryJSON []byte) error {
+	_, err := r.pool.Exec(ctx, `
+        UPDATE runs
+        SET ai_summary_json = $1
+        WHERE id = $2
+    `, summaryJSON, id)
+	if err != nil {
+		return fmt.Errorf("repository.SaveAISummary: %w", err)
 	}
 	return nil
 }
