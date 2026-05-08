@@ -14,7 +14,7 @@ test:
 	go test ./... -v -cover
 
 migrate:
-	docker compose exec postgres psql -U scraper -d tokopedia_scraper -f /dev/stdin < db/migrations/001_create_runs.sql
+	cat db/migrations/*.sql | docker compose exec -T postgres psql -U scraper -d tokopedia_scraper -f /dev/stdin
 
 seed:
 	curl -s -X POST http://localhost:8080/v1/scrape/tokopedia/search \

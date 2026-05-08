@@ -13,9 +13,11 @@ import (
 type Repository interface {
 	Create(ctx context.Context, marketplace string, input scraper.SearchOptions) (*Run, error)
 	GetByID(ctx context.Context, id string) (*Run, error)
+	GetForNormalization(ctx context.Context, id string) (*Run, error)
 	List(ctx context.Context, limit, offset int) ([]Run, int, error)
 	UpdateStatus(ctx context.Context, id string, status Status, errMsg string) error
 	SaveResult(ctx context.Context, id string, products []scraper.Product) error
+	SaveNormalized(ctx context.Context, id string, normalizedJSON []byte) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -51,17 +53,21 @@ func (r *postgresRepository) Create(ctx context.Context, marketplace string, inp
 func (r *postgresRepository) GetByID(ctx context.Context, id string) (*Run, error) {
 	run := &Run{}
 	err := r.pool.QueryRow(ctx, `
-        SELECT id, status, marketplace, input_json, result_json,
+        SELECT id, status, marketplace, input_json, result_json, normalized_json,
                error_message, item_count, created_at, started_at, finished_at
         FROM runs WHERE id = $1
     `, id).Scan(
-		&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.ResultJSON,
+		&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.ResultJSON, &run.NormalizedJSON,
 		&run.ErrorMessage, &run.ItemCount, &run.CreatedAt, &run.StartedAt, &run.FinishedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("repository.GetByID: %w", err)
 	}
 	return run, nil
+}
+
+func (r *postgresRepository) GetForNormalization(ctx context.Context, id string) (*Run, error) {
+	return r.GetByID(ctx, id)
 }
 
 func (r *postgresRepository) List(ctx context.Context, limit, offset int) ([]Run, int, error) {
@@ -71,7 +77,7 @@ func (r *postgresRepository) List(ctx context.Context, limit, offset int) ([]Run
 	}
 
 	rows, err := r.pool.Query(ctx, `
-        SELECT id, status, marketplace, input_json, error_message,
+        SELECT id, status, marketplace, input_json, normalized_json, error_message,
                item_count, created_at, started_at, finished_at
         FROM runs ORDER BY created_at DESC LIMIT $1 OFFSET $2
     `, limit, offset)
@@ -84,7 +90,7 @@ func (r *postgresRepository) List(ctx context.Context, limit, offset int) ([]Run
 	for rows.Next() {
 		var run Run
 		if err := rows.Scan(
-			&run.ID, &run.Status, &run.Marketplace, &run.InputJSON,
+			&run.ID, &run.Status, &run.Marketplace, &run.InputJSON, &run.NormalizedJSON,
 			&run.ErrorMessage, &run.ItemCount, &run.CreatedAt, &run.StartedAt, &run.FinishedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("repository.List scan: %w", err)
@@ -123,6 +129,18 @@ func (r *postgresRepository) SaveResult(ctx context.Context, id string, products
     `, StatusSucceeded, resultBytes, len(products), now, id)
 	if err != nil {
 		return fmt.Errorf("repository.SaveResult: %w", err)
+	}
+	return nil
+}
+
+func (r *postgresRepository) SaveNormalized(ctx context.Context, id string, normalizedJSON []byte) error {
+	_, err := r.pool.Exec(ctx, `
+        UPDATE runs
+        SET normalized_json = $1
+        WHERE id = $2
+    `, normalizedJSON, id)
+	if err != nil {
+		return fmt.Errorf("repository.SaveNormalized: %w", err)
 	}
 	return nil
 }

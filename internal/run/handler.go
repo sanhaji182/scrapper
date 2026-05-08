@@ -2,12 +2,14 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
+	"github.com/sonick/tokopedia-scraper/internal/ai"
 	"github.com/sonick/tokopedia-scraper/internal/scraper"
 )
 
@@ -31,6 +33,8 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	v1.GET("/runs", h.ListRuns)
 	v1.GET("/runs/:id", h.GetRun)
 	v1.DELETE("/runs/:id", h.DeleteRun)
+	v1.POST("/runs/:id/normalize", h.NormalizeRun)
+	v1.GET("/runs/:id/normalized", h.GetNormalizedRun)
 }
 
 func (h *Handler) SubmitTokopediaSearch(c echo.Context) error {
@@ -104,4 +108,47 @@ func (h *Handler) DeleteRun(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "run not found")
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) NormalizeRun(c echo.Context) error {
+	id := c.Param("id")
+	ctx := c.Request().Context()
+
+	r, err := h.repo.GetForNormalization(ctx, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "run not found")
+	}
+
+	llmClient := ai.NewDummyClient()
+	groups, err := ai.NormalizeRun(ctx, id, string(r.Status), r.ResultJSON, llmClient, h.repo.SaveNormalized)
+	if err != nil {
+		h.logger.Error("normalize run failed", zap.String("run_id", id), zap.Error(err))
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"run_id":    id,
+		"groups":    groups,
+		"group_cnt": len(groups),
+	})
+}
+
+func (h *Handler) GetNormalizedRun(c echo.Context) error {
+	id := c.Param("id")
+	ctx := c.Request().Context()
+
+	r, err := h.repo.GetByID(ctx, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "run not found")
+	}
+	if len(r.NormalizedJSON) == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "normalized result not found for this run")
+	}
+
+	var groups []ai.ProductGroup
+	if err := json.Unmarshal(r.NormalizedJSON, &groups); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to decode normalized data")
+	}
+
+	return c.JSON(http.StatusOK, groups)
 }
