@@ -15,7 +15,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <Link href="/" className="sidebar-brand">
-        <span className="brand-mark">P</span>
+        <span className="brand-mark"><span aria-hidden="true">P</span></span>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", fontSize: 21, fontWeight: 950, letterSpacing: "-0.06em", lineHeight: 1 }}>PriceScope</span>
           <span className="text-faint" style={{ display: "block", fontSize: 12, marginTop: 4 }}>Blue market intelligence</span>
@@ -43,7 +43,7 @@ export function Sidebar() {
           <span className="text-faint" style={{ fontSize: 11, fontWeight: 850, letterSpacing: ".12em", textTransform: "uppercase" }}>Signal</span>
           <span className="marketplace-badge mp-default">Live</span>
         </div>
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, fontWeight: 740 }}>AI insights, grouping, and price radar for fast marketplace decisions.</p>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, fontWeight: 740 }}>Live scraping, AI grouping, and price radar for confident marketplace decisions.</p>
         <div className="sidebar-meter" aria-hidden="true"><span /></div>
       </div>
 
