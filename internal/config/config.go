@@ -10,26 +10,38 @@ import (
 )
 
 type Config struct {
-	Port              string
-	DatabaseURL       string
-	RedisAddr         string
-	RedisPassword     string
-	ProxyList         []string
-	RequestTimeoutSec int
-	WorkerConcurrency int
-	AllowedOrigins    []string
+	Port               string
+	DatabaseURL        string
+	RedisAddr          string
+	RedisPassword      string
+	ProxyList          []string
+	RequestTimeoutSec  int
+	WorkerConcurrency  int
+	AllowedOrigins     []string
+	AIProvider         string
+	AIAPIKey           string
+	AIModel            string
+	AITimeoutSec       int
+	AIMaxRetries       int
+	ShopeeCookieHeader string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:              getEnv("PORT", "8080"),
-		DatabaseURL:       getEnv("DATABASE_URL", ""),
-		RedisAddr:         getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword:     getEnv("REDIS_PASSWORD", ""),
-		RequestTimeoutSec: getEnvInt("REQUEST_TIMEOUT_SEC", 15),
-		WorkerConcurrency: getEnvInt("WORKER_CONCURRENCY", 5),
+		Port:               getEnv("PORT", "8080"),
+		DatabaseURL:        getEnv("DATABASE_URL", ""),
+		RedisAddr:          getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:      getEnv("REDIS_PASSWORD", ""),
+		RequestTimeoutSec:  getEnvInt("REQUEST_TIMEOUT_SEC", 15),
+		WorkerConcurrency:  getEnvInt("WORKER_CONCURRENCY", 5),
+		AIProvider:         getEnv("AI_PROVIDER", "openai"),
+		AIAPIKey:           getEnv("AI_API_KEY", ""),
+		AIModel:            getEnv("AI_MODEL", "gpt-4.1-mini"),
+		AITimeoutSec:       getEnvInt("AI_TIMEOUT_SEC", 30),
+		AIMaxRetries:       getEnvInt("AI_MAX_RETRIES", 2),
+		ShopeeCookieHeader: getEnv("SHOPEE_COOKIE_HEADER", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

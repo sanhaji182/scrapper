@@ -1,0 +1,8 @@
+.git
+.env
+bin
+api
+worker
+dashboard/node_modules
+dashboard/.next
+dashboard/.env.local

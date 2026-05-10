@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -48,34 +49,41 @@ func NewWorker(
 		scrapers: scrapers,
 	}
 
-	w.mux.HandleFunc(TaskTokopediaSearch, w.handleTokopediaSearch)
+	w.mux.HandleFunc(TaskMarketplaceSearch, w.handleMarketplaceSearch)
+	w.mux.HandleFunc(TaskTokopediaSearch, w.handleMarketplaceSearch)
 	return w
 }
 
-func (w *Worker) handleTokopediaSearch(ctx context.Context, t *asynq.Task) error {
+func (w *Worker) handleMarketplaceSearch(ctx context.Context, t *asynq.Task) error {
 	var payload JobPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-		return fmt.Errorf("worker.handleTokopediaSearch unmarshal: %w", err)
+		return fmt.Errorf("worker.handleMarketplaceSearch unmarshal: %w", err)
+	}
+	if payload.Marketplace == "" {
+		payload.Marketplace = "tokopedia"
 	}
 
-	log := w.logger.With(zap.String("run_id", payload.RunID))
+	log := w.logger.With(zap.String("run_id", payload.RunID), zap.String("marketplace", payload.Marketplace))
 	log.Info("starting scrape job", zap.String("keyword", payload.Options.Keyword))
 
 	if err := w.repo.UpdateStatus(ctx, payload.RunID, run.StatusRunning, ""); err != nil {
 		return fmt.Errorf("worker: update status running: %w", err)
 	}
 
-	s, ok := w.scrapers["tokopedia"]
+	s, ok := w.scrapers[payload.Marketplace]
 	if !ok {
-		errMsg := "tokopedia scraper not registered"
+		errMsg := payload.Marketplace + " scraper not registered"
 		_ = w.repo.UpdateStatus(ctx, payload.RunID, run.StatusFailed, errMsg)
 		return fmt.Errorf("%s", errMsg)
 	}
 
-	products, err := s.Search(ctx, payload.Options)
+	products, err := searchWithCookie(ctx, s, payload.Options, payload.CookieHeader)
 	if err != nil {
 		log.Error("scrape failed", zap.Error(err))
 		_ = w.repo.UpdateStatus(ctx, payload.RunID, run.StatusFailed, err.Error())
+		if isPermanentScrapeError(err) {
+			return nil
+		}
 		return fmt.Errorf("worker: scrape: %w", err)
 	}
 
@@ -94,4 +102,20 @@ func (w *Worker) Start() error {
 
 func (w *Worker) Shutdown() {
 	w.server.Shutdown()
+}
+
+func isPermanentScrapeError(err error) bool {
+	message := err.Error()
+	return strings.Contains(message, "after anonymous session refresh") || strings.Contains(message, "scraper not registered")
+}
+
+func searchWithCookie(ctx context.Context, s scraper.MarketplaceScraper, opts scraper.SearchOptions, cookieHeader string) ([]scraper.Product, error) {
+	if cookieHeader != "" {
+		if cookieScraper, ok := s.(interface {
+			SearchWithCookie(context.Context, scraper.SearchOptions, string) ([]scraper.Product, error)
+		}); ok {
+			return cookieScraper.SearchWithCookie(ctx, opts, cookieHeader)
+		}
+	}
+	return s.Search(ctx, opts)
 }

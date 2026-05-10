@@ -14,6 +14,9 @@ import (
 	"github.com/sonick/tokopedia-scraper/internal/queue"
 	"github.com/sonick/tokopedia-scraper/internal/run"
 	"github.com/sonick/tokopedia-scraper/internal/scraper"
+	"github.com/sonick/tokopedia-scraper/internal/scraper/blibli"
+	"github.com/sonick/tokopedia-scraper/internal/scraper/lazada"
+	"github.com/sonick/tokopedia-scraper/internal/scraper/shopee"
 	tokopedia "github.com/sonick/tokopedia-scraper/internal/scraper/tokopedia"
 )
 
@@ -39,9 +42,15 @@ func main() {
 
 	proxyMgr := proxy.NewManager(cfg.ProxyList)
 	tokopediaScraper := tokopedia.New(cfg.RequestTimeoutSec, proxyMgr, logger)
+	shopeeScraper := shopee.New(cfg.RequestTimeoutSec, proxyMgr, logger, shopee.WithCookieHeader(cfg.ShopeeCookieHeader))
+	blibliScraper := blibli.New(cfg.RequestTimeoutSec, proxyMgr, logger)
+	lazadaScraper := lazada.New(cfg.RequestTimeoutSec, proxyMgr, logger)
 
 	scrapers := map[string]scraper.MarketplaceScraper{
 		"tokopedia": tokopediaScraper,
+		"shopee":    shopeeScraper,
+		"blibli":    blibliScraper,
+		"lazada":    lazadaScraper,
 	}
 
 	runRepo := run.NewRepository(pool)

@@ -2,6 +2,8 @@ package proxy
 
 import (
 	"math/rand"
+	"net/http"
+	"net/url"
 	"sync"
 )
 
@@ -37,4 +39,18 @@ func (m *Manager) GetRandom() string {
 
 func (m *Manager) Len() int {
 	return len(m.proxies)
+}
+
+func (m *Manager) ProxyFunc() func(*http.Request) (*url.URL, error) {
+	return func(*http.Request) (*url.URL, error) {
+		proxyURL := m.GetProxy()
+		if proxyURL == "" {
+			return nil, nil
+		}
+		parsed, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, err
+		}
+		return parsed, nil
+	}
 }

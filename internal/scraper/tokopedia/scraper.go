@@ -133,7 +133,7 @@ func (s *Scraper) Search(ctx context.Context, opts scraper.SearchOptions) ([]scr
 		if len(pageProducts) == 0 {
 			return trimProducts(products, opts.MaxItems), nil
 		}
-		products = append(products, pageProducts...)
+		products = append(products, scraper.FilterRelevantProducts(opts.Keyword, pageProducts)...)
 		if len(products) >= opts.MaxItems || !hasNextPage {
 			break
 		}
@@ -142,7 +142,7 @@ func (s *Scraper) Search(ctx context.Context, opts scraper.SearchOptions) ([]scr
 		}
 	}
 
-	return trimProducts(products, opts.MaxItems), nil
+	return trimProducts(scraper.FilterRelevantProducts(opts.Keyword, products), opts.MaxItems), nil
 }
 
 func (s *Scraper) fetchPage(ctx context.Context, opts scraper.SearchOptions, page int) ([]scraper.Product, bool, error) {

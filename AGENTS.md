@@ -56,7 +56,7 @@ tokopedia-scraper/
 - [x] Phase 1 — Bootstrap & Config
 - [x] Phase 2 — Core Structs & Interfaces
 - [x] Phase 3 — Database Migration & Repository
-- [ ] Phase 4 — Tokopedia Scraper
+- [x] Phase 4 — Tokopedia Scraper
 - [x] Phase 5 — Job Queue
 - [x] Phase 6 — REST API Handlers
 - [x] Phase 7 — Proxy Manager
@@ -64,6 +64,9 @@ tokopedia-scraper/
 - [x] Phase 9 — Docker & Tooling
 - [x] Phase 10 — AI Normalizer
 - [x] Phase 11 — AI Summary
+- [x] Phase 12 — Next.js Dashboard
+- [x] Phase 13 — Runtime LLM Client
+- [x] Phase 14 — Dashboard Hybrid UX
 
 ## Updated Folder Structure (Phase 10–12)
 
@@ -73,7 +76,7 @@ internal/ai/
   summary.go       // SummarizeRun, AISummaryResult
   types.go         // NormalizedProduct, ProductGroup, GroupedItem
 
-apps/dashboard/    // Repo frontend terpisah (Next.js 14)
+dashboard/         // Next.js dashboard frontend
 
 ## New Endpoints (Phase 10–11)
 POST /v1/runs/:id/normalize

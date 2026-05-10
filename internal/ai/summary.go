@@ -27,10 +27,6 @@ func SummarizeRun(ctx context.Context, runID string, normalizedJSON []byte, clie
 		return nil, fmt.Errorf("SummarizeRun: marshal groups: %w", err)
 	}
 
-	if userPrompt == "" {
-		userPrompt = defaultSummaryPrompt()
-	}
-
 	result, err := client.SummarizeGroups(ctx, payloadBytes, userPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("SummarizeRun: LLM summarize: %w", err)
@@ -45,29 +41,4 @@ func SummarizeRun(ctx context.Context, runID string, normalizedJSON []byte, clie
 	}
 
 	return result, nil
-}
-
-func defaultSummaryPrompt() string {
-	return `Kamu adalah asisten belanja untuk pengguna di Indonesia.
-
-Tugasmu:
-1. Baca data "groups" yang berisi kelompok produk dengan harga dan rating.
-2. Berikan ringkasan singkat dalam bahasa Indonesia tentang:
-   - pola harga (misalnya range harga, brand mahal/murah),
-   - hal yang perlu diwaspadai (harga terlalu murah, rating jelek).
-3. Pilih maksimal 5 rekomendasi terbaik untuk value for money.
-
-Untuk setiap rekomendasi, sertakan:
-- group_id
-- product_id
-- reason (1-2 kalimat)
-
-Jawab HANYA dalam format JSON dengan struktur:
-{
-  "summary_text": "...",
-  "recommended_items": [
-    {"group_id": "...", "product_id": "...", "reason": "..."}
-  ]
-}
-`
 }

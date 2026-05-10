@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
+	"github.com/sonick/tokopedia-scraper/internal/ai"
 	"github.com/sonick/tokopedia-scraper/internal/config"
 	appMiddleware "github.com/sonick/tokopedia-scraper/internal/middleware"
 	"github.com/sonick/tokopedia-scraper/internal/queue"
@@ -40,12 +41,14 @@ func main() {
 	runRepo := run.NewRepository(pool)
 	queueClient := queue.NewClient(cfg.RedisAddr, cfg.RedisPassword)
 	defer queueClient.Close()
+	llmClient := ai.NewRuntimeClientFromConfig(cfg, logger)
+	marketplaceRuntime := config.NewMarketplaceRuntimeSettings(cfg)
 
 	e := echo.New()
 	e.HideBanner = true
 	appMiddleware.Register(e, logger, cfg.AllowedOrigins)
 
-	runHandler := run.NewHandler(runRepo, queueClient, logger)
+	runHandler := run.NewHandlerWithRuntimeSettings(runRepo, queueClient, logger, llmClient, marketplaceRuntime)
 	runHandler.RegisterRoutes(e)
 
 	e.GET("/health", func(c echo.Context) error {
